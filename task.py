@@ -1,9 +1,10 @@
 # -*- coding: UTF-8 -*-
 import re
 import json
-import datetime
 import pytz
+import time
 import requests
+import random
 from celery import Celery
 from bs4 import BeautifulSoup
 import rethinkdb as r
@@ -21,6 +22,7 @@ custom_headers = json.loads(r'''{
 "Upgrade-Insecure-Requests":"1",
 "User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.119 Safari/537.36"
 }''')
+
 
 @app.task
 def get_tt_pages():
@@ -41,6 +43,7 @@ def get_member_list(num):
 
 @app.task
 def get_member_detl(url):
+    time.sleep(1)
     resp = requests.get(url, headers=custom_headers)
     resp.encoding = 'utf-8'
     soup = BeautifulSoup(resp.text, 'lxml')
@@ -73,7 +76,7 @@ def collect_profile(page):
             profile = get_member_detl(url)
             print(profile)
             to_rethinkdb.delay(profile)
-  #          to_mongoDB.delay(profile)
+            to_mongoDB.delay(profile)
         except AttributeError:
             continue
 
@@ -84,13 +87,11 @@ def to_rethinkdb(profile):
     conn.close()
     return res
 
-"""
 @app.task
 def to_mongoDB(profile):
     conn = MongoClient('localhost', 27017)
     db = conn.dog
     collection = db.dogforums
-    results = collection.insert_many(profile)
-    connection.close()
+    results = collection.insert(profile)
+    conn.close()
     return results
-"""
