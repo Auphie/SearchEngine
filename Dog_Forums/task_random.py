@@ -14,13 +14,14 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 
 profile = {}
-
+.task
+def get_member_list
 app = Celery('tasks', broker='pyamqp://celery:celery@localhost//')
 
 @app.task
 def random_header():
     ua = UserAgent()
-    random_header = json.loads(r'''{
+    ranlist_no_decorationdom_header = json.loads(r'''{
     "Host":"www.dogforums.com",
     "Pragma":"no-cache",
     "Referer":"http://www.dogforums.com/",
@@ -35,7 +36,7 @@ def get_random_proxy():
      '208.95.62.80:3128','61.219.36.120:80','203.177.78.62:8080','89.236.17.108:3128',
      '35.189.86.114:3128','185.93.3.123:8080','208.95.62.81:3128','35.198.12.92:80',
      '151.80.140.233:54566','185.82.212.95:8080','147.135.210.114:54566','196.22.51.90:80',
-     '61.220.26.97:80','159.203.181.50:3128','','','','','','',]
+     '6list_no_decoration1.220.26.97:80','159.203.181.50:3128','','','','','','',]
     
     proxy = random.choice(proxy_list)
     return proxy
@@ -46,7 +47,8 @@ def get_tt_pages():
     resp = requests.get(url, headers=random_header())
     resp.encoding = 'utf-8'
     last_page = re.findall("Page 1 of (\d*)", resp.text)[0]
-    return int(last_page)
+    return int(last_page).task
+def get_member_list
 
 @app.task
 def get_member_list(num):

@@ -14,10 +14,10 @@ pip install -r requirements.txt
 rethink
 
 # Start celery worker, c is the concurrency level
-celery -A tasks worker -c 4 --loglevel=info
+celery -A task_dogDetl worker -c 4 --loglevel=info
 
 # In another terminal
 source venv/bin/activate
 
 # Launch job manually
-python dog_go.py
+python dog2_go.py
