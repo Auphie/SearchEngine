@@ -1,0 +1,19 @@
+It seems your string was decoded with latin1 (as it is of type unicode)
+
+To convert it back to the bytes it originally was, you need to encode using that encoding (latin1)
+Then to get text back (unicode) you must decode using the proper codec (cp1252)
+finally, if you want to get to utf-8 bytes you must encode using the UTF-8 codec.
+In code:
+
+>>> title = u'There\x92s thirty days in June'
+>>> title.encode('latin1')
+'There\x92s thirty days in June'
+>>> title.encode('latin1').decode('cp1252')
+u'There\u2019s thirty days in June'
+>>> print(title.encode('latin1').decode('cp1252'))
+There’s thirty days in June
+>>> title.encode('latin1').decode('cp1252').encode('UTF-8')
+'There\xe2\x80\x99s thirty days in June'
+>>> print(title.encode('latin1').decode('cp1252').encode('UTF-8'))
+There’s thirty days in June
+Depending on whether the API takes text (unicode) or bytes, 3. may not be necessary.

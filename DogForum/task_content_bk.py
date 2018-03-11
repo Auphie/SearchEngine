@@ -1,4 +1,3 @@
-# -*- coding: UTF-8 -*-
 import re
 import json
 import pytz
@@ -14,7 +13,6 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 
 app = Celery('tasks', broker='pyamqp://celery:celery@localhost//')
-set_url = []
 
 @app.task
 def random_header(url):
@@ -40,27 +38,38 @@ def get_random_proxy():
     return proxy
 
 @app.task
-def url_filter(title_url, title):
-    if title_url not in set_url:
-        content_page_url(title_url, title)
-        set_url.append(title_url)
+def board_urls(board_name,last_page):
+    thread = {}
+    for page in range(1,last_page+1):
+        url = "http://www.dogforum.com/{}/{}/".format(board_name, page)
+        resp = requests.get(url, headers=random_header(url))
+        soup = BeautifulSoup(resp.text, 'lxml')
+        for num in range(1,250):
+            try:
+                title_url = soup.select('table')[11].findAll("a", id=re.compile("^thread_title_"))[num]['href']
+                title = soup.select('table')[11].findAll("a", id=re.compile("^thread_title_"))[num].text
+                thread[title_url] = title
+            except IndexError:
+                break
+    content_page_url(thread)
 
 @app.task
-def content_page_url(title_url, title):
-    resp = requests.get(title_url, headers = random_header(title_url))
-    if not re.findall("Page 1 of (\d*)", resp.text):
-        get_content(title_url, 1, title)
-    else:
-        get_content(title_url, 1, title)
-        last_page = int(re.findall("Page 1 of (\d*)", resp.text)[0])
-        for page in range(2, last_page+1):
-            url2 = title_url+'page%s/'%page
-            get_content(url2, page, title)
+def content_page_url(thread):
+    for title_url, title in thread.items():
+        resp = requests.get(title_url, headers = random_header(title_url))
+        if not re.findall("Page 1 of (\d*)", resp.text):
+            get_content(title_url, 1, title)
+        else:
+            get_content(title_url, 1, title)
+            last_page = int(re.findall("Page 1 of (\d*)", resp.text)[0])
+            for page in range(2, last_page+1):
+                url2 = title_url+'page%s/'%page
+                get_content(url2, page, title)
 
 @app.task
 def get_content(title_url, page, title):
     resp = requests.get(title_url, headers=random_header(title_url))
-    resp.encoding = 'utf-8'
+    resp.encoding = 'cp1252'
     soup = BeautifulSoup(resp.text, 'lxml')
 
     post = []
@@ -71,7 +80,7 @@ def get_content(title_url, page, title):
         block['page'] = 'page %s'%page
         block['title'] = title
         floor = soup.select('.tborder.vbseo_like_postbit')[num].findAll(id=re.compile("^postcount"))[0].get('name')
-        block['floor'] = int(floor)
+        block['floor'] = floor
         block['author_url'] = soup.select('.tborder.vbseo_like_postbit')[num].select('a.bigusername')[0]['href']
         block['author_name'] = soup.select('.tborder.vbseo_like_postbit')[num].select('a.bigusername')[0].text
 
@@ -108,20 +117,17 @@ def get_content(title_url, page, title):
         except IndexError:
             pass
         block['author_info'] = author
-        block['_id'] = 'Page%s'%page + 'Floor%s'%floor + re.findall('http://www.dogforum.com(.*)', title_url)[0]
-      #  block['id'] = 'Page%s'%page + 'Floor%s'%floor + re.findall('http://www.dogforum.com(.*)', title_url)[0]
-
 
         quotation = [y.text.strip() for y in soup.select('.tborder.vbseo_like_postbit')[num].findAll(id=re.compile("^post_message_"))[0].select('td.alt2')]
         [div.extract() for div in soup.select('.tborder.vbseo_like_postbit')[num].find("div", id=re.compile("^post_message_")).select('div')]
         [quo.extract() for quo in soup.select('.tborder.vbseo_like_postbit')[num].findAll(id=re.compile("^post_message_"))[0].select('td.alt2')]
         a = soup.select('.tborder.vbseo_like_postbit')[num].find("div", id=re.compile("^post_message_")).text
-        a.replace('Sent from my iPad using Tapatalk','').replace('Quote: ','[...quotation...]').replace("\r","").replace('\t','').replace("\n","").strip()
+        a.replace('Sent from my iPad using Tapatalk','').replace('Quote: ','[...quotation...]').replace("\r","").replace('\t','').strip()
         block['content'] = a
         block['quotation'] = quotation
         post.append(block)
-        
-   # to_rethinkdb(post)
+
+    to_rethinkdb(post)
     to_mongoDB(post)
 
 @app.task
