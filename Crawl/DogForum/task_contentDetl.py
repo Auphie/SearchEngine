@@ -109,31 +109,31 @@ def get_content(title_url, page, title):
             pass
         block['author_info'] = author
         block['_id'] = 'Page%s'%page + 'Floor%s'%floor + re.findall('http://www.dogforum.com(.*)', title_url)[0]
-      #  block['id'] = 'Page%s'%page + 'Floor%s'%floor + re.findall('http://www.dogforum.com(.*)', title_url)[0]
-
+        block['id'] = 'Page%s'%page + 'Floor%s'%floor + re.findall('http://www.dogforum.com(.*)', title_url)[0]
 
         quotation = [y.text.strip() for y in soup.select('.tborder.vbseo_like_postbit')[num].findAll(id=re.compile("^post_message_"))[0].select('td.alt2')]
+        block['quotation'] = quotation
+
         [div.extract() for div in soup.select('.tborder.vbseo_like_postbit')[num].find("div", id=re.compile("^post_message_")).select('div')]
         [quo.extract() for quo in soup.select('.tborder.vbseo_like_postbit')[num].findAll(id=re.compile("^post_message_"))[0].select('td.alt2')]
         a = soup.select('.tborder.vbseo_like_postbit')[num].find("div", id=re.compile("^post_message_")).text
         a.replace('Sent from my iPad using Tapatalk','').replace('Quote: ','[...quotation...]').replace("\r","").replace('\t','').replace("\n","").strip()
         block['content'] = a
-        block['quotation'] = quotation
         post.append(block)
         
-   # to_rethinkdb(post)
+    to_rethinkdb(post)
     to_mongoDB(post)
 
 @app.task
 def to_rethinkdb(post):
     conn = r.connect()
-    res = r.db('Dogforum').table('test').insert(post).run(conn)
+    res = r.db('Dogforum').table('Perform_sports').insert(post).run(conn)
     conn.close()
 
 @app.task
 def to_mongoDB(post):
     conn = MongoClient('localhost', 27017)
     db = conn.Dogforum
-    collection = db.Dog_health
+    collection = db.Perform_sports
     results = collection.insert_many(post)
     conn.close()
