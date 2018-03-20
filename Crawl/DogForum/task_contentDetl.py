@@ -1,14 +1,13 @@
 # -*- coding: UTF-8 -*-
 import re
 import json
-import pytz
-import time
 import requests
 import random
+from datetime import datetime
+from dateutil import parser
 from fake_useragent import UserAgent
 from celery import Celery
 from bs4 import BeautifulSoup
-from fake_useragent import UserAgent
 import rethinkdb as r
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -81,7 +80,10 @@ def get_content(title_url, page, title):
         data['time'] = soup.select('.tborder.vbseo_like_postbit')[num].find('td').text.split()[1]
         data['ampm'] = soup.select('.tborder.vbseo_like_postbit')[num].find('td').text.split()[2]
         block['post_date'] = data
-
+        dt = parser.parse(soup.select('.tborder.vbseo_like_postbit')[num].find('td').text.strip())
+        p_date = dt.strftime("%Y%m%d%H%M%S")
+        block['p_date'] = p_date
+        
         author = {}
         try:
             author['member_type'] = soup.select('.tborder.vbseo_like_postbit')[num].select('div.smallfont')[0].text
@@ -108,8 +110,8 @@ def get_content(title_url, page, title):
         except IndexError:
             pass
         block['author_info'] = author
-        block['_id'] = 'Page%s'%page + 'Floor%s'%floor + re.findall('http://www.dogforum.com(.*)', title_url)[0]
-        block['id'] = 'Page%s'%page + 'Floor%s'%floor + re.findall('http://www.dogforum.com(.*)', title_url)[0]
+        block['_id'] = re.findall('http://www.dogforum.com(.*)', title_url)[0] + 'Floor%s'%floor
+        block['id'] = re.findall('http://www.dogforum.com(.*)', title_url)[0] + 'Floor%s'%floor
 
         quotation = [y.text.strip() for y in soup.select('.tborder.vbseo_like_postbit')[num].findAll(id=re.compile("^post_message_"))[0].select('td.alt2')]
         block['quotation'] = quotation
