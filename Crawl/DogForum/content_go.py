@@ -18,8 +18,8 @@ def random_header(url):
     random_header["Referer"] = url
     return random_header
 
-board_name = 'dog-performance-sports'
-total_page = 3
+board_name = 'dog-stories'
+total_page = 2
 
 for page in range(1, total_page + 1):
     url = "http://www.dogforum.com/{}/{}/".format(board_name, page)
@@ -31,4 +31,4 @@ for page in range(1, total_page + 1):
             title = soup.findAll("a", id=re.compile("^thread_title_"))[num].text
         except IndexError:
             break
-        task_contentDetl.url_filter.delay(title_url, title)
+        task_contentDetl.url_filter.delay(board_name, title_url, title)

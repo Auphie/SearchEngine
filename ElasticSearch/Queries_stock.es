@@ -49,3 +49,20 @@ GET /dogforum/Breeds/_search
   "content"
   ]
 }
+------------------------------------------------------
+(Search by date)
+GET dogforum/_search
+{
+    "query": {
+        "range" : {
+            "post_date" : {
+                "gte": "01/01/2012",
+                "lte": "2013",
+                "format": "dd/MM/yyyy||yyyy"
+            }
+        }
+    }
+}
+//  (date format can be that) "lte": "now/d",
+
+

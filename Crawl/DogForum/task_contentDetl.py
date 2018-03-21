@@ -39,25 +39,25 @@ def get_random_proxy():
     return proxy
 
 @app.task
-def url_filter(title_url, title):
+def url_filter(board_name, title_url, title):
     if title_url not in set_url:
-        content_page_url(title_url, title)
+        content_page_url(board_name, title_url, title)
         set_url.append(title_url)
 
 @app.task
-def content_page_url(title_url, title):
+def content_page_url(board_name, title_url, title):
     resp = requests.get(title_url, headers = random_header(title_url))
     if not re.findall("Page 1 of (\d*)", resp.text):
-        get_content(title_url, 1, title)
+        get_content(board_name, title_url, 1, title)
     else:
-        get_content(title_url, 1, title)
+        get_content(board_name, title_url, 1, title)
         last_page = int(re.findall("Page 1 of (\d*)", resp.text)[0])
         for page in range(2, last_page+1):
             url2 = title_url+'page%s/'%page
-            get_content(url2, page, title)
+            get_content(board_name, url2, page, title)
 
 @app.task
-def get_content(title_url, page, title):
+def get_content(board_name, title_url, page, title):
     resp = requests.get(title_url, headers=random_header(title_url))
     resp.encoding = 'utf-8'
     soup = BeautifulSoup(resp.text, 'lxml')
@@ -66,23 +66,18 @@ def get_content(title_url, page, title):
     
     for num in range(0,len(soup.select('.tborder.vbseo_like_postbit'))):
         block = {}
+        block['board'] = board_name
         block['url'] = title_url
-        block['page'] = 'page %s'%page
+        block['page'] = int(page)
         block['title'] = title
         floor = soup.select('.tborder.vbseo_like_postbit')[num].findAll(id=re.compile("^postcount"))[0].get('name')
         block['floor'] = int(floor)
         block['author_url'] = soup.select('.tborder.vbseo_like_postbit')[num].select('a.bigusername')[0]['href']
         block['author_name'] = soup.select('.tborder.vbseo_like_postbit')[num].select('a.bigusername')[0].text
 
-        post_date = {}
-        data = {}
-        data['date'] = soup.select('.tborder.vbseo_like_postbit')[num].find('td').text.split()[0].replace(',','')
-        data['time'] = soup.select('.tborder.vbseo_like_postbit')[num].find('td').text.split()[1]
-        data['ampm'] = soup.select('.tborder.vbseo_like_postbit')[num].find('td').text.split()[2]
-        block['post_date'] = data
         dt = parser.parse(soup.select('.tborder.vbseo_like_postbit')[num].find('td').text.strip())
-        p_date = dt.strftime("%Y%m%d%H%M%S")
-        block['p_date'] = p_date
+        block['post_date'] = dt.strftime("%Y-%m-%d %H:%M")
+        block['post_stamp'] = int(dt.strftime("%Y%m%d%H%M"))
         
         author = {}
         try:
@@ -98,7 +93,7 @@ def get_content(title_url, page, title):
         except IndexError:
             pass
         try:
-            author['posts'] = re.findall('Posts: (.*)', soup.select('.tborder.vbseo_like_postbit')[num].text)[0].strip()
+            author['posts'] = int(re.findall('Posts: (.*)', soup.select('.tborder.vbseo_like_postbit')[num].text)[0].strip())
         except IndexError:
             pass
         try:
@@ -110,8 +105,8 @@ def get_content(title_url, page, title):
         except IndexError:
             pass
         block['author_info'] = author
-        block['_id'] = re.findall('http://www.dogforum.com(.*)', title_url)[0] + 'Floor%s'%floor
-        block['id'] = re.findall('http://www.dogforum.com(.*)', title_url)[0] + 'Floor%s'%floor
+        block['_id'] = re.findall('http://www.dogforum.com/(.*)', title_url)[0].replace('/','.') + 'F%s'%floor
+        block['id'] = re.findall('http://www.dogforum.com/(.*)', title_url)[0].replace('/','.') + 'F%s'%floor
 
         quotation = [y.text.strip() for y in soup.select('.tborder.vbseo_like_postbit')[num].findAll(id=re.compile("^post_message_"))[0].select('td.alt2')]
         block['quotation'] = quotation
@@ -123,19 +118,18 @@ def get_content(title_url, page, title):
         block['content'] = a
         post.append(block)
         
-    to_rethinkdb(post)
-    to_mongoDB(post)
+    to_mongoDB(board_name.replace('-','_'), post)
 
 @app.task
-def to_rethinkdb(post):
+def to_rethinkdb(board_name, post):
     conn = r.connect()
-    res = r.db('Dogforum').table('Perform_sports').insert(post).run(conn)
+    res = r.db('Dogforum').table(board_name).insert(post).run(conn)
     conn.close()
 
 @app.task
-def to_mongoDB(post):
+def to_mongoDB(board_name, post):
     conn = MongoClient('localhost', 27017)
     db = conn.Dogforum
-    collection = db.Perform_sports
+    collection = db[board_name]
     results = collection.insert_many(post)
     conn.close()
