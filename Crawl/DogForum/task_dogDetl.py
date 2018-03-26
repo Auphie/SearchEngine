@@ -8,7 +8,6 @@ import random
 from fake_useragent import UserAgent
 from celery import Celery
 from bs4 import BeautifulSoup
-from fake_useragent import UserAgent
 import rethinkdb as r
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -111,14 +110,12 @@ def get_dog_detl(url):
     return data
 
 @app.task
-def collect_profile():
-    for url in get_dog_list():
-        try:
-            profile = get_dog_detl(url)
-            to_rethinkdb.delay(profile)
-            to_mongoDB.delay(profile)
-        except AttributeError:
-            continue
+def collect_profile(url):
+    try:
+        profile = get_dog_detl(url)
+        to_mongoDB.delay(profile)
+    except AttributeError:
+        continue
 
 @app.task
 def to_rethinkdb(profile):
@@ -130,8 +127,8 @@ def to_rethinkdb(profile):
 @app.task
 def to_mongoDB(profile):
     conn = MongoClient('localhost', 27017)
-    db = conn.Dogforum
-    collection = db.DogDetail
+    db = conn.Dog
+    collection = db.dogDetail
     results = collection.insert(profile)
     conn.close()
     return results
