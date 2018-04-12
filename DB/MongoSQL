@@ -1,0 +1,283 @@
+Group by multiple fields and append a column
+
+db.post.aggregate(
+   [{
+      $group:
+         {
+           _id: { board: "$board", title: "$title" },
+           contents: { $push: "$content" },
+           url: { $push: "$url" }
+         }
+    },
+    { "$project": {
+        _id: 0,
+        board: "$_id.board",
+        title: "$_id.title",
+        url: { $arrayElemAt: [ "$url", 0 ] },
+        contents: "$contents"
+             }
+     },
+    {$out:"titles"}
+   ], { allowDiskUse: true }
+)
+
+---------------------------------------------------------------------------------
+A-1, Join two collections
+
+db.autho.aggregate([
+   { $lookup:
+       {
+         from: "dogDetl",
+         localField: "author_name",
+         foreignField: "owner_name",
+         as: "pet_name"
+       }
+    },
+    { $project : {
+            author_name : 1, 
+            tot_posts : 1,
+	    breed: "$pet_name.breed"
+        }
+     },
+    { $out:"member_pet"
+     }
+  ], { allowDiskUse: true }
+)
+
+------------------------------------------------------------------------------------
+
+Join post with author's pets into a list
+
+db.post.aggregate([
+   { $lookup:
+       {
+         from: "member_pet",
+         localField: "author_name",
+         foreignField: "member_name",
+         as: "pet_name"
+       }
+    },
+    { "$unwind": "$pet_name" 
+     },
+    { $project : {
+            board : 1,
+            title : 1,
+            page : 1,
+            floor : 1,
+            author_name : 1,
+            author_type : 1, 
+            join_date : 1,
+            author_location : 1,
+            content : 1,
+            quotation : 1,
+            post_date : 1,
+            post_time : 1,
+            url : 1,
+	    pet: "$pet_name.pet"
+        }
+     },
+    { $out:"post_dog"
+     }
+  ], { allowDiskUse: true }
+)
+
+---------------------------------------------------------------------------------
+combine posts to Title with dog info (db.post_dog)
+(needs to set via Python, addToSet can't combine null array)
+
+db.post_dog.aggregate(
+   [{
+      $group:
+         {
+           _id: { board: "$board", title: "$title" },
+           contents: { $push: "$content" },
+           url: { $push: "$url" },
+	   pets: { $push: "$pet" }
+         }
+     },
+    { "$project": {
+        _id: 0,
+        board: "$_id.board",
+        title: "$_id.title",
+        url: { $arrayElemAt: [ "$url", 0 ] },
+        contents: "$contents",
+        pets: "$pets"
+             }
+     },
+    {$out:"tit_dog"
+     }
+   ], { allowDiskUse: true }
+)
+
+
+---------------------------------------------------------------------------------
+
+Group by multiple fields and count(*)
+
+db.post.aggregate(
+   [{ $group:
+         { _id: { board: "$board", title: "$title", author: "$author_name" },
+	   count : { $sum : 1}
+	 }
+    },
+    {  $sort:{"_id.board":1, "_id.title":1 }
+     },
+    { $project: {
+           _id: 0,
+           board: "$_id.board",
+           title: "$_id.title",
+           author: "$_id.author",
+           post_count: "$count"
+             }
+     }
+   ], { allowDiskUse: true }
+)
+
+---------------------------------------------------------------------------------
+# if create article, score add 2, else score add 1
+
+db.post.aggregate(
+   [
+    { $project: {
+           _id: 0,
+           board: "$board",
+           title: "$title",
+           author: "$author_name",
+	   page: "$page",
+           floor: "$floor",
+           score: { $cond: [ {$eq: ["$floor", 1]} , 2, 1 ] }
+             }
+     },
+     { $group:
+         { _id: { board: "$board", title: "$title", author: "$author" },
+	   scrore_sum : { $sum : "$score"}
+	  }
+      },
+     { $sort:{"_id.board":1, "_id.title":1 }
+      },
+     { $project: {
+           _id: 0,
+           board: "$_id.board",
+           title: "$_id.title",
+           author: "$_id.author",
+           scores: "$scrore_sum"
+                   }
+      },
+      {$out:"T_A_score"
+     }
+   ], { allowDiskUse: true }
+)
+
+---------------------------------------------------------------------------------
+
+db.T_A_score.aggregate(
+   [{ $group:
+         { _id: { scores: "$scores" },
+	   count : { $sum : 1 }
+	 }
+     },
+    { $sort:{"_id.scores":1 }
+     },
+    { $project: {
+          score: "$_id.scores",
+          counts: "$count"
+                  }
+      },
+    {$out:"score_rank"
+     }
+   ]
+)
+
+---------------------------------------------------------------------------------
+
+db.post_dog.aggregate([
+   { $lookup:
+       {
+         from: "autho",
+         localField: "author_name",
+         foreignField: "author_name",
+         as: "m_id"
+       }
+     },
+    { "$unwind": "$m_id" 
+     },
+    { $project : {
+            board : 1,
+            title : 1,
+            page : 1,
+            floor : 1,
+	    author_ID: "$m_id._id",
+            author_name : 1,
+            author_type : 1, 
+            join_date : 1,
+            author_location : 1,
+            content : 1,
+            quotation : 1,
+            post_date : 1,
+            post_time : 1,
+            url : 1,
+	    pet : 1
+                }
+      },
+     { $out:"threads"
+      }
+  ], { allowDiskUse: true }
+)
+
+---------------------------------------------------------------------------------
+
+db.threads.aggregate([
+   { $lookup:
+       {
+         from: "articles",
+         localField: "board",
+         foreignField: "board",
+         localField: "title",
+         foreignField: "title",
+         as: "tt"
+       }
+     },
+    { "$unwind": "$tt" 
+     },
+    { $project : {
+            board : 1,
+            title_ID: "$tt._id",
+            title : 1,
+            page : 1,
+            floor : 1,
+	    author_ID: 1,
+            author_name : 1,
+            author_type : 1, 
+            join_date : 1,
+            author_location : 1,
+            content : 1,
+            quotation : 1,
+            post_date : 1,
+            post_time : 1,
+            url : "$tt.url",
+	    pet : "$tt.pets"
+                }
+      },
+     { $out:"big_table"
+      }
+  ], { allowDiskUse: true }
+)
+
+
+
+
+
+
+
+
+db.articles.aggregate(
+   [{ $group:
+         { _id: { title: "$title" },
+	   count : { $sum : 1 }
+	 }
+     },
+    { $sort:{count:-1 }
+     }
+   ]
+)
+

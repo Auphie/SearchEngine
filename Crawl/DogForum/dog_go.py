@@ -1,4 +1,5 @@
-import task_dogDetl
+import task_dog
+import json
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -14,4 +15,5 @@ header = json.loads(r'''{
 url = 'http://www.dogforum.com/dogs/'
 resp = requests.get(url, headers=header)
 hrefs = [href for href in re.findall("""<a href="(http://www.dogforum.com/dogs/\S*/)">""", resp.text)]
-collect_profile(hrefs).delay()
+for url in hrefs:
+    task_dog.get_dog_detl.delay(url)

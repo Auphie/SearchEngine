@@ -1,0 +1,8 @@
+2018-04-04T22:55:34.897857800 0.038666s notice: Recursively removing directory /home/iii/git/SearchEngine/Crawl/DogForum/rethinkdb_data/tmp
+2018-04-04T22:55:34.900808009 0.041616s notice: Initializing directory /home/iii/git/SearchEngine/Crawl/DogForum/rethinkdb_data
+2018-04-04T22:55:34.900898686 0.041706s info: Creating a default database for your convenience. (This is because you ran 'rethinkdb' without 'create', 'serve', or '--join', and the directory '/home/iii/git/SearchEngine/Crawl/DogForum/rethinkdb_data' did not already exist or is empty.)
+2018-04-04T22:55:34.900958885 0.041767s notice: Running rethinkdb 2.3.6 (GCC 5.4.0)...
+2018-04-04T22:55:34.903446128 0.044256s notice: Running on Linux 4.13.0-37-generic x86_64
+2018-04-04T22:55:34.903502939 0.044311s notice: Loading data from directory /home/iii/git/SearchEngine/Crawl/DogForum/rethinkdb_data
+2018-04-04T22:55:34.980544022 0.121352s info: Automatically using cache size of 5767 MB
+2018-04-04T22:55:34.982095337 0.122903s error: TCP socket creation failed for port 29015: Address already in use.

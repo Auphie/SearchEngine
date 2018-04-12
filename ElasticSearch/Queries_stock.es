@@ -1,11 +1,11 @@
-GET /dogforum/Breeds/_search
+GET /dogforum/_search
 {
   "query" : {
   "bool": {
-      "should": [
-           { "match": { "title": "cocker" }},
-           { "match": { "content":  "cocker"}}
-        ]
+       "should": {
+            "match": { "title": "cocker" }},
+       "must": {
+            "match": { "content":  "cocker"}}
     }
 },
     "highlight": {
@@ -25,14 +25,18 @@ GET /dogforum/Breeds/_search
  }
 }
 ---------------------------------------------------
-GET /dogforum/Breeds/_search
+# keywords can put blank!
+
+GET /dogforum/_search
 {
   "query" : {
   "bool": {
-      "should": [
-           { "match": { "title": "cocker" }},
-           { "match": { "content":  "cocker"}}
-        ]
+       "should": [
+        {"match":{ "title": "cocker" }},
+        {"match":{ "board": "pan" }}
+            ],
+       "must": {
+            "match": { "content":  "cocker"}}
     }
 },
     "highlight": {
@@ -41,14 +45,17 @@ GET /dogforum/Breeds/_search
             "content" : {}
         }
     },
-  "_source" : [
-  "author_name",
-  "post_date",
-  "title",
-  "floor",
-  "content"
+  "_source" : {
+  "excludes" : [
+  "id",
+  "_id",
+  "page",
+  "auhtor_info",
+  "author_url"
   ]
+ }
 }
+
 ------------------------------------------------------
 (Search by date)
 GET dogforum/_search
@@ -66,3 +73,41 @@ GET dogforum/_search
 //  (date format can be that) "lte": "now/d",
 
 
+------------------------------------------------------
+(search with date range)
+GET /dogforum/posts/_search
+{
+  "query" : {
+  "bool": {
+      "should": [
+        {"match":{ "title": "cocker" }},
+        {"match":{ "board": "pan" }}
+            ],
+      "must": {
+            "match": { "content":  "cocker"}},
+        "filter": {
+          "range" : {
+            "post_date" : {
+                "gte": "2012-1-1",
+                "lte": "2012-1-20",
+                "format": "yyyy-MM-dd||yyyy"
+            }
+        }
+    }}
+},
+    "highlight": {
+        "fields" : {
+            "title" : {},
+            "content" : {}
+        }
+    },
+  "_source" : {
+  "excludes" : [
+  "id",
+  "_id",
+  "page",
+  "auhtor_info",
+  "author_url"
+  ]
+ }
+}

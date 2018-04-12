@@ -1,0 +1,106 @@
+查詢單一文章的普通查詢
+
+GET /thread/_search
+{
+  "query" : {
+  "bool": {
+       "must": {
+            "match": { "content": "allergy" }},
+       "should": {
+            "match": { "title":  "cocker"}}
+    }
+},
+    "highlight": {
+        "fields" : {
+            "title" : {},
+            "content" : {}
+        }
+    },
+  "_source" : {
+  "excludes" : [
+  "id",
+  "_id",
+  "page",
+  "auhtor_info",
+  "author_url"
+  ]
+ }
+}
+
+===============================================================
+
+包含tag的threads查詢
+
+GET /thread/_search
+{
+  "query" : {
+  "bool": {
+       "must": [
+        {"match":{ "title": "cocker" }},
+        {"match":{ "tags": "Allergy" }}
+            ],
+       "should": {
+            "match": { "content":  "cocker"}}
+    }
+},
+    "highlight": {
+        "fields" : {
+            "title" : {},
+            "content" : {}
+        }
+    },
+  "_source" : {
+  "excludes" : [
+  "id",
+  "_id",
+  "page",
+  "auhtor_info",
+  "author_url"
+  ]
+ }
+}
+
+===============================================================
+
+GET /thread/_search
+{
+  "query" : {
+  "bool": {
+      "should": [
+        {"match":{ "title": "cocker" }},
+        {"match":{ "tags": "Allergy" }}
+            ],
+      "must": {
+            "match": { "content":  "cocker"}},
+        "filter": {
+          "range" : {
+            "post_date" : {
+                "gte": "2017-1-1",
+                "lte": "now/d",
+                "format": "yyyy-MM-dd||yyyy"
+            }
+        }
+    }}
+},
+    "highlight": {
+        "fields" : {
+            "title" : {},
+            "content" : {}
+        }
+    },
+  "_source" : {
+  "excludes" : [
+  "id",
+  "_id",
+  "page",
+  "auhtor_info",
+  "author_url"
+  ]
+ }
+}
+
+===============================================================
+
+
+
+

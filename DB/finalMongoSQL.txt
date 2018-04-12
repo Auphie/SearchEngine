@@ -1,0 +1,230 @@
+db.dogInfo.aggregate(
+   [{
+      $group:
+         {
+           _id: { member: "$owner_name" },
+	    pets: { $addToSet: "$breed" }
+         }
+    },
+    { "$project": {
+        _id: 0,
+        owner: "$_id.member",
+        pets: "$pets"
+             }
+     },
+    {$out:"memberDog"}
+   ], { allowDiskUse: true }
+)
+
+------------------------------------------------------------
+
+db.memberInfo.aggregate([
+   { $lookup:
+       {
+         from: "memberDog",
+         localField: "member_name",
+         foreignField: "owner",
+         as: "breed"
+       }
+    },
+    { $project : {
+            _id : 1,
+            member_name : 1,
+            JoinDate : 1, 
+            LastActivity : 1,
+            PostsPerDay : 1,
+            Referrals : 1,
+            TotalPosts : 1,
+	    pets: "$breed.pets"
+        }
+     },
+    { $out:"member_info"
+     }
+  ], { allowDiskUse: true }
+)
+
+------------------------------------------------------------
+
+<<  give up ... >>
+db.thread.aggregate([
+   {$unwind:"$threads"
+    },
+   { $lookup:
+       {
+         from: "tag",
+         localField: "threads.author_name",
+         foreignField: "member_name",
+         as: "key"
+       }
+    },
+   {$unwind:"$key"
+    },
+   { $project : {
+            id : 0
+                 }
+      },
+    { $out:"posts"
+     }
+  ], { allowDiskUse: true }
+)
+
+    { $project : {
+            _id : 1,
+            board : 1,
+            title : 1,
+            title_id : 1, 
+            title_url : "$url",
+            floor : "$threads.floor",
+	        author_id: "$key._id",
+            author_name : "$threads.author_name",
+            post : "$threads.content",
+            post_date : "$threads.post_date",
+	        pets: "$key.pets"
+                 }
+      },
+
+
+------------------------------------------------------------
+
+Group by multiple fields and append a column
+
+db.cf_.aggregate(
+   [{
+      $group:
+         {
+           _id: { board: "$board", title: "$title" },
+           contents: { $push: "$content" },
+           url: { $push: "$url" }
+         }
+    },
+    { "$project": {
+        _id: 0,
+        board: "$_id.board",
+        title: "$_id.title",
+        url: { $arrayElemAt: [ "$url", 0 ] },
+        contents: "$contents"
+             }
+     },
+    {$out:"titles"}
+   ], { allowDiskUse: true }
+)
+
+------------------------------------------------------------
+
+db.member_info.aggregate(
+   [{
+      $group:
+         {_id:{source:"$member_name"}, count:{$sum:1}}
+     }, 
+    {$sort:{"_id.source":-1}
+     }
+   ], { allowDiskUse: true }
+)
+
+------------------------------------------------------------
+
+# if create article, score add 2, else score add 1
+
+db.cf_table.aggregate(
+   [
+    { $project: {
+           _id: 0,
+           board: "$board",
+           title_id: "$title_id",
+           title: "$title",
+           member_id: "$member_id",
+	   member_name: "$member_name",
+           floor: "$floor",
+           score: { $cond: [ {$eq: ["$floor", 1]} , 2, 1 ] }
+             }
+     },
+     { $group:
+         { _id: { board: "$board", title_id: "$title_id", title: "$title",
+                member_id: "$member_id", member_name: "$member_name" },
+	   scrore_sum : { $sum : "$score"}
+	  }
+      },
+     { $sort:{"_id.board":1, "_id.title":-1 }
+      },
+     { $project: {
+           _id: 0,
+           board: "$_id.board",
+           title_id: "$_id.title_id",
+           title: "$_id.title",
+           member_id: "$_id.member_id",
+           member_name: "$_id.member_name",
+           scores: "$scrore_sum"
+                   }
+      },
+      {$out:"cf_score"
+     }
+   ], { allowDiskUse: true }
+)
+
+
+------------------------------------------------------------
+
+db.cf_table.aggregate(
+   [{
+      $group:
+         {_id:{source:"$member_name"}, count:{$sum:1}}
+     }, 
+    {$sort:{"_id.source":-1}
+     }
+   ], { allowDiskUse: true }
+)
+
+------------------------------------------------------------
+
+db.cf_score.aggregate(
+   [{ $group:
+         { _id: { scores: "$scores" },
+	   count : { $sum : 1 }
+	 }
+     },
+    { $sort:{"_id.scores":-1 }
+     },
+    { $project: {
+          score: "$_id.scores",
+          counts: "$count"
+                  }
+      },
+    {$out:"score_rank"
+     }
+   ]
+)
+
+------------------------------------------------------------
+
+db.posts_tag.aggregate(
+   [{
+      $group:
+         {
+           _id: { _id: "$title_id" ,board: "$board", title: "$title" ,
+                  title_id: "$title_id", title_url: "$title_url" },
+           contents: { $push: "$thread.content" },
+           tags: { $addToSet: "$thread.tags" }
+         }
+    },
+    {$unwind:"$_id"
+     },
+    { $project: {
+          _id: "$_id.title_id" ,board: "$_id.board", title: "$_id.title" ,
+          title_id: "$_id.title_id", title_url: "$_id.title_url",
+          contents: "$contents", tag: "$tags"
+                  }
+     },
+    {$out:"articles_tag"}
+   ], { allowDiskUse: true }
+).pretty()
+
+------------------------------------------------------------
+
+db.posts_tag.aggregate(
+   [
+    {$unwind:"$thread"
+     }
+   ], { allowDiskUse: true }
+)
+
+    {$out:"articles_tag"}
